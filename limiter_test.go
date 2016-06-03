@@ -6,7 +6,7 @@ import (
 )
 
 func TestImplementLogInterface(t *testing.T) {
-	// compilation should fail if MySqlUserManagement doesn't implement UserManagement interface.
+	// compilation should fail if RedisRollingRateLimiter doesn't implement RollingRateLimiter interface.
 	var _ ratelimiter.RollingRateLimiter = ratelimiter.RedisRollingRateLimiter{}
 	var _ ratelimiter.RollingRateLimiter = (*ratelimiter.RedisRollingRateLimiter)(nil)
 }
