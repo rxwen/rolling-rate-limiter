@@ -7,6 +7,12 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
+// RollingRateLimiter interface makes it easier to do unit testing.
+type RollingRateLimiter interface {
+	Check(key string) bool
+}
+
+// RedisRollingRateLimiter
 type RedisRollingRateLimiter struct {
 	conn     redis.Conn
 	interval int
