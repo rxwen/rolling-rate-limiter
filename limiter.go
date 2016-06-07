@@ -40,9 +40,12 @@ func (l RedisRollingRateLimiter) Check(key string) bool {
 	l.conn.Send("EXPIRE", key, l.interval)
 	status, err := l.conn.Do("EXEC")
 	fmt.Println(status, err)
+	if err != nil {
+		return false
+	}
 
 	items, err := redis.Strings(l.conn.Do("ZRANGE", key, 0, -1))
-	if len(items) >= l.rate {
+	if err != nil || len(items) >= l.rate {
 		return false
 	} else {
 		return true
