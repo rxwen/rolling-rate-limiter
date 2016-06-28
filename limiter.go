@@ -2,9 +2,12 @@ package ratelimiter
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
+
+	"github.com/rxwen/resourcepool"
 )
 
 // RollingRateLimiter interface makes it easier to do unit testing.
@@ -14,18 +17,25 @@ type RollingRateLimiter interface {
 
 // RedisRollingRateLimiter
 type RedisRollingRateLimiter struct {
-	conn     redis.Conn
+	pool     *resourcepool.ResourcePool
 	interval int
 	rate     int
 }
 
 func NewRedisRollingRateLimiter(endpoint string, interval, rate int) *RedisRollingRateLimiter {
-	c, err := redis.Dial("tcp", endpoint)
+	host, port, _ := net.SplitHostPort(endpoint)
+	pool, err := resourcepool.NewResourcePool(host, port, func(host, port string) (interface{}, error) {
+		c, err := redis.Dial("tcp", endpoint)
+		return c, err
+	}, func(c interface{}) error {
+		c.(redis.Conn).Close()
+		return nil
+	}, 10)
 	if err != nil {
-		panic("failed to connect redis")
+		panic("failed to create redis resource pool")
 	}
 	return &RedisRollingRateLimiter{
-		conn:     c,
+		pool:     pool,
 		interval: interval,
 		rate:     rate,
 	}
@@ -34,17 +44,23 @@ func NewRedisRollingRateLimiter(endpoint string, interval, rate int) *RedisRolli
 func (l RedisRollingRateLimiter) Check(key string) bool {
 	now := time.Now().Unix()
 	timeToClean := now - int64(l.interval)
-	l.conn.Send("MULTI")
-	l.conn.Send("ZREMRANGEBYSCORE", key, 0, timeToClean)
-	l.conn.Send("ZADD", key, now, now)
-	l.conn.Send("EXPIRE", key, l.interval)
-	status, err := l.conn.Do("EXEC")
+	c, e := l.pool.Get()
+	if e != nil {
+		return false
+	}
+	defer l.pool.Release(c)
+	conn := c.(redis.Conn)
+	conn.Send("MULTI")
+	conn.Send("ZREMRANGEBYSCORE", key, 0, timeToClean)
+	conn.Send("ZADD", key, now, now)
+	conn.Send("EXPIRE", key, l.interval)
+	status, err := conn.Do("EXEC")
 	fmt.Println(status, err)
 	if err != nil {
 		return false
 	}
 
-	items, err := redis.Strings(l.conn.Do("ZRANGE", key, 0, -1))
+	items, err := redis.Strings(conn.Do("ZRANGE", key, 0, -1))
 	if err != nil || len(items) >= l.rate {
 		return false
 	} else {
