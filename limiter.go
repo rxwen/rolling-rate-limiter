@@ -30,7 +30,7 @@ func NewRedisRollingRateLimiter(endpoint string, interval, rate int) *RedisRolli
 	}, func(c interface{}) error {
 		c.(redis.Conn).Close()
 		return nil
-	}, 10)
+	}, 10, 5)
 	if err != nil {
 		panic("failed to create redis resource pool")
 	}
