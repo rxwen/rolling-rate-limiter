@@ -17,7 +17,7 @@ func TestImplementLogInterface(t *testing.T) {
 func TestCheckRate(t *testing.T) {
 	assert := assert.New(t)
 	const interval = 3
-	var l ratelimiter.RollingRateLimiter = ratelimiter.NewRedisRollingRateLimiter("172.16.154.128:6379", interval, 3)
+	var l ratelimiter.RollingRateLimiter = ratelimiter.NewRedisRollingRateLimiter("demo", "172.16.154.128:6379", interval, 3)
 	assert.True(l.Check("aaa"))
 	assert.True(l.Check("aaa"))
 	assert.True(l.Check("aaa"))

@@ -20,9 +20,10 @@ type RedisRollingRateLimiter struct {
 	pool     *resourcepool.ResourcePool
 	interval int
 	rate     int
+	prefix   string
 }
 
-func NewRedisRollingRateLimiter(endpoint string, interval, rate int) *RedisRollingRateLimiter {
+func NewRedisRollingRateLimiter(prefix, endpoint string, interval, rate int) *RedisRollingRateLimiter {
 	host, port, _ := net.SplitHostPort(endpoint)
 	pool, err := resourcepool.NewResourcePool(host, port, func(host, port string) (interface{}, error) {
 		c, err := redis.Dial("tcp", endpoint)
@@ -50,6 +51,8 @@ func (l RedisRollingRateLimiter) Check(key string) bool {
 		return false
 	}
 	defer l.pool.Release(c)
+
+	key = l.prefix + key
 	conn := c.(redis.Conn)
 	conn.Send("MULTI")
 	conn.Send("ZREMRANGEBYSCORE", key, 0, timeToClean)
