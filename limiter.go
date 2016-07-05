@@ -66,6 +66,7 @@ func (l RedisRollingRateLimiter) Check(key string) bool {
 
 	items, err := redis.Strings(conn.Do("ZRANGE", key, 0, -1))
 	if err != nil || len(items) > l.rate {
+		log.Println(err)
 		return false
 	} else {
 		return true
