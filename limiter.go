@@ -2,7 +2,6 @@ package ratelimiter
 
 import (
 	"log"
-	"net"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -23,20 +22,9 @@ type RedisRollingRateLimiter struct {
 	prefix   string
 }
 
-func NewRedisRollingRateLimiter(prefix, endpoint string, interval, rate int) *RedisRollingRateLimiter {
-	host, port, _ := net.SplitHostPort(endpoint)
-	pool, err := resourcepool.NewResourcePool(host, port, func(host, port string) (interface{}, error) {
-		c, err := redis.Dial("tcp", endpoint)
-		return c, err
-	}, func(c interface{}) error {
-		c.(redis.Conn).Close()
-		return nil
-	}, 10, 5)
-	if err != nil {
-		panic("failed to create redis resource pool")
-	}
+func NewRedisRollingRateLimiter(prefix string, redisPool *resourcepool.ResourcePool, interval, rate int) *RedisRollingRateLimiter {
 	return &RedisRollingRateLimiter{
-		pool:     pool,
+		pool:     redisPool,
 		interval: interval,
 		rate:     rate,
 	}
