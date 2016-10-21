@@ -48,6 +48,7 @@ func (l RedisRollingRateLimiter) Check(key string) bool {
 	conn.Send("EXPIRE", key, l.interval)
 	status, err := conn.Do("EXEC")
 	if err != nil {
+		l.pool.CheckError(c, err)
 		log.Println(status, err)
 		return false
 	}
