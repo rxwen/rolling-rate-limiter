@@ -1,7 +1,6 @@
 package ratelimiter
 
 import (
-	"log"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -31,6 +30,9 @@ func NewRedisRollingRateLimiter(prefix string, redisPool *resourcepool.ResourceP
 }
 
 func (l RedisRollingRateLimiter) Check(key string) bool {
+	if l.interval == 0 || l.rate == 0 {
+		return true
+	}
 	now := time.Now().Unix()
 	nowNano := time.Now().UnixNano()
 	timeToClean := now - int64(l.interval)
@@ -46,16 +48,14 @@ func (l RedisRollingRateLimiter) Check(key string) bool {
 	conn.Send("ZREMRANGEBYSCORE", key, 0, timeToClean)
 	conn.Send("ZADD", key, nowNano, nowNano)
 	conn.Send("EXPIRE", key, l.interval)
-	status, err := conn.Do("EXEC")
+	_, err := conn.Do("EXEC")
 	if err != nil {
 		l.pool.CheckError(c, err)
-		log.Println(status, err)
 		return false
 	}
 
 	items, err := redis.Strings(conn.Do("ZRANGE", key, 0, -1))
 	if err != nil || len(items) > l.rate {
-		log.Println(err)
 		return false
 	} else {
 		return true
