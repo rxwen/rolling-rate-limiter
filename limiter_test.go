@@ -41,7 +41,7 @@ func updateRate(pool *resourcepool.ResourcePool, channel string, cfg ratelimiter
 
 func TestCheckRate(t *testing.T) {
 	assert := assert.New(t)
-	redisPool, _ := redispool.CreateRedisConnectionPool("192.168.2.234:6379", 10, 5)
+	redisPool, _ := redispool.CreateRedisConnectionPool("192.168.2.175:6379", 10, 5)
 	const interval = 1
 	var l *ratelimiter.RedisRollingRateLimiter = ratelimiter.NewRedisRollingRateLimiter("demo", redisPool, interval, 3)
 	assert.True(l.Check("aaa"))
@@ -78,4 +78,26 @@ func TestCheckRate(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		assert.True(l.Check("ddd"))
 	}
+}
+
+func TestCheckReset(t *testing.T) {
+	assert := assert.New(t)
+	redisPool, _ := redispool.CreateRedisConnectionPool("192.168.2.175:6379", 10, 5)
+	const interval = 5
+	var l *ratelimiter.RedisRollingRateLimiter = ratelimiter.NewRedisRollingRateLimiter("demo2", redisPool, interval, 3)
+	assert.True(l.Check("bbb"))
+	assert.True(l.Check("bbb"))
+	assert.True(l.Check("bbb"))
+	assert.False(l.Check("bbb"))
+	l.Reset("bbb")
+	assert.True(l.Check("bbb"))
+	assert.True(l.Check("bbb"))
+	assert.True(l.Check("bbb"))
+	assert.False(l.Check("bbb"))
+	l.Reset("bbb")
+	assert.True(l.Check("bbb"))
+	assert.True(l.Check("bbb"))
+	assert.True(l.Check("bbb"))
+	assert.False(l.Check("bbb"))
+	l.Reset("bbb")
 }

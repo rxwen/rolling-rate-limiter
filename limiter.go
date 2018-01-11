@@ -11,6 +11,7 @@ import (
 // RollingRateLimiter interface makes it easier to do unit testing.
 type RollingRateLimiter interface {
 	Check(key string) bool
+	Reset(key string)
 }
 
 // RedisRollingRateLimiter
@@ -59,5 +60,21 @@ func (l RedisRollingRateLimiter) Check(key string) bool {
 		return false
 	} else {
 		return true
+	}
+}
+
+func (l RedisRollingRateLimiter) Reset(key string) {
+	c, e := l.pool.Get()
+	if e != nil {
+		return
+	}
+	defer l.pool.Release(c)
+
+	key = l.prefix + key
+	conn := c.(redis.Conn)
+	_, err := conn.Do("DEL", key)
+	if err != nil {
+		l.pool.CheckError(c, err)
+		return
 	}
 }
