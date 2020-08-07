@@ -8,7 +8,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/rxwen/resourcepool"
 	"github.com/rxwen/resourcepool/redispool"
-	"github.com/rxwen/rolling-rate-limiter"
+	ratelimiter "github.com/rxwen/rolling-rate-limiter"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,7 +23,8 @@ func updateRate(pool *resourcepool.ResourcePool, channel string, cfg ratelimiter
 	if e != nil {
 		panic(e)
 	}
-	defer pool.Release(c)
+	destroy := false
+	defer func() { pool.Putback(c, destroy) }() // use a func to wrap the putback to avoid evalute destroy value now
 	conn := c.(redis.Conn)
 	data, err := json.Marshal(cfg)
 	if err != nil {

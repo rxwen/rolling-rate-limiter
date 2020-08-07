@@ -41,7 +41,8 @@ func (l RedisRollingRateLimiter) Check(key string) bool {
 	if e != nil {
 		return false
 	}
-	defer l.pool.Release(c)
+	destroy := false
+	defer func() { l.pool.Putback(c, destroy) }() // use a func to wrap the putback to avoid evalute destroy value now
 
 	key = l.prefix + key
 	conn := c.(redis.Conn)
@@ -51,7 +52,7 @@ func (l RedisRollingRateLimiter) Check(key string) bool {
 	conn.Send("EXPIRE", key, l.interval)
 	_, err := conn.Do("EXEC")
 	if err != nil {
-		l.pool.CheckError(c, err)
+		destroy = true
 		return false
 	}
 
@@ -68,13 +69,14 @@ func (l RedisRollingRateLimiter) Reset(key string) {
 	if e != nil {
 		return
 	}
-	defer l.pool.Release(c)
+	destroy := false
+	defer func() { l.pool.Putback(c, destroy) }() // use a func to wrap the putback to avoid evalute destroy value now
 
 	key = l.prefix + key
 	conn := c.(redis.Conn)
 	_, err := conn.Do("DEL", key)
 	if err != nil {
-		l.pool.CheckError(c, err)
+		destroy = true
 		return
 	}
 }

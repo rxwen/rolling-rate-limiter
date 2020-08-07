@@ -19,12 +19,13 @@ func ListenRateConfigForLimiter(channel string, pool *resourcepool.ResourcePool,
 	if e != nil {
 		return e
 	}
-	defer pool.Release(c)
+	destroy := false
+	defer func() { pool.Putback(c, destroy) }() // use a func to wrap the putback to avoid evalute destroy value now
 	conn := c.(redis.Conn)
 	psc := redis.PubSubConn{conn}
 	err := psc.Subscribe(channel)
 	if err != nil {
-		pool.CheckError(c, err)
+		destroy = true
 		return err
 	}
 	for {
@@ -38,7 +39,7 @@ func ListenRateConfigForLimiter(channel string, pool *resourcepool.ResourcePool,
 			}
 		case redis.Subscription:
 		case error:
-			pool.CheckError(c, v)
+			destroy = true
 			return v
 		}
 	}
